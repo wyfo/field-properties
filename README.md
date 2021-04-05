@@ -94,6 +94,7 @@ assert Foo2() == 1
 `field_property` comes with a default implementation for its getter/setter/deleter. This can be turned off with `raw=False` parameter. Here is an example of a read_only field:
 
 ```python
+from dataclasses import dataclass
 from field_properties import field_property
 
 @dataclass
@@ -105,6 +106,7 @@ class Foo:
         return 0
 
 assert Foo().bar == 0
+assert str(Foo()) == "Foo(bar=0)"
 try:
     Foo().bar = 1
 except AttributeError:
