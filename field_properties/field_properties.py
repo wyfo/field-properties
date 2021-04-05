@@ -1,6 +1,5 @@
 import dataclasses
 from collections.abc import Mapping
-from copy import copy
 from functools import wraps
 from typing import Any, Callable, Optional, TypeVar, overload
 
@@ -23,11 +22,7 @@ class BaseFieldProperty(property):
         raise NotImplementedError
 
     def __init__(
-        self,
-        fget: FGetType,
-        fset: FSetType,
-        fdel: FDelType,
-        doc: Optional[str] = None
+        self, fget: FGetType, fset: FSetType, fdel: FDelType, doc: Optional[str] = None
     ):
         handle_property_default = None
         if fset is not None:
@@ -149,8 +144,10 @@ class FieldPropertyDecorator:
 
         # Create field default factory
         if self.default_factory is None:
+
             def default_factory():
                 raise TypeError(f"Missing parameter {name}")
+
         else:
             default_factory = self.default_factory
 
@@ -221,7 +218,9 @@ def field_property(__field: Any) -> FieldPropertyDecorator:
     ...
 
 
-def field_property(__field=NO_FIELD, *, raw: bool = False, inherit: bool=False, **kwargs):
+def field_property(
+    __field=NO_FIELD, *, raw: bool = False, inherit: bool = False, **kwargs
+):
     """With keywords argument, declare a field property; otherwise, get a property-like
     object from a declared field_property to set its accessors.
 

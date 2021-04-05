@@ -1,4 +1,4 @@
-from dataclasses import FrozenInstanceError, InitVar, dataclass, field
+from dataclasses import FrozenInstanceError, dataclass, field
 from typing import Optional
 from unittest.mock import Mock
 
