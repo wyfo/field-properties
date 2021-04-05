@@ -29,24 +29,26 @@ class BaseFieldProperty(property):
         fdel: FDelType,
         doc: Optional[str] = None
     ):
-        # Because fset is overridden, the raw fset is stored in an attribute
-        if hasattr(fset, FSET_ATTRIBUTE):
-            fset = getattr(fset, FSET_ATTRIBUTE)
+        handle_property_default = None
+        if fset is not None:
+            # Because fset is overridden, the raw fset is stored in an attribute
+            if hasattr(fset, FSET_ATTRIBUTE):
+                fset = getattr(fset, FSET_ATTRIBUTE)
 
-        @wraps(fset)
-        def handle_property_default(obj, value):
-            """Handle field initialization with its default value.
+            @wraps(fset)
+            def handle_property_default(obj, value):
+                """Handle field initialization with its default value.
 
-            Field default value will be the class attribute, which is set by the
-            descriptor as the property itself. So dataclass __init__ will call the
-            property setter with the property as argument; in this case, the default
-            factory has to be used."""
-            if isinstance(value, BaseFieldProperty):
-                fset(obj, self._default_factory())
-            else:
-                fset(obj, value)
+                Field default value will be the class attribute, which is set by the
+                descriptor as the property itself. So dataclass __init__ will call the
+                property setter with the property as argument; in this case, the default
+                factory has to be used."""
+                if isinstance(value, BaseFieldProperty):
+                    fset(obj, self._default_factory())
+                else:
+                    fset(obj, value)
 
-        setattr(handle_property_default, FSET_ATTRIBUTE, fset)
+            setattr(handle_property_default, FSET_ATTRIBUTE, fset)
 
         super().__init__(fget=fget, fset=handle_property_default, fdel=fdel, doc=doc)
 
@@ -64,12 +66,14 @@ def to_default_factory(default, default_factory) -> Optional[Callable[[], Any]]:
 class FieldPropertyDecorator:
     def __init__(
         self,
+        raw: bool,
         inherit: bool,
         *,
         default: Any = dataclasses.MISSING,
         default_factory: Any = dataclasses.MISSING,
         **kwargs,
     ):
+        self.raw = raw
         self.inherit = inherit
         self.property: property = property()
         self.kwargs = kwargs
@@ -123,24 +127,25 @@ class FieldPropertyDecorator:
                     )
                 break
         # Set default accessors
-        hidden_field = "_" + name
-        if self.property.fget is None:
+        if not self.raw:
+            hidden_field = "_" + name
+            if self.property.fget is None:
 
-            @self.getter
-            def default_get(self):
-                return object.__getattribute__(self, hidden_field)
+                @self.getter
+                def default_get(self):
+                    return object.__getattribute__(self, hidden_field)
 
-        if self.property.fset is None:
+            if self.property.fset is None:
 
-            @self.setter
-            def default_set(self, value):
-                object.__setattr__(self, hidden_field, value)
+                @self.setter
+                def default_set(self, value):
+                    object.__setattr__(self, hidden_field, value)
 
-        if self.property.fdel is None:
+            if self.property.fdel is None:
 
-            @self.deleter
-            def default_del(self):
-                object.__delattr__(self, hidden_field)
+                @self.deleter
+                def default_del(self):
+                    object.__delattr__(self, hidden_field)
 
         # Create field default factory
         if self.default_factory is None:
@@ -175,6 +180,7 @@ def field_property(
     hash: Optional[bool] = None,
     compare: bool = True,
     metadata: Optional[Mapping] = None,
+    raw: bool = False,
     inherit: bool = False,
 ) -> Any:
     ...
@@ -189,6 +195,7 @@ def field_property(
     hash: Optional[bool] = None,
     compare: bool = True,
     metadata: Optional[Mapping] = None,
+    raw: bool = False,
     inherit: bool = False,
 ) -> T:
     ...
@@ -203,6 +210,7 @@ def field_property(
     hash: Optional[bool] = None,
     compare: bool = True,
     metadata: Optional[Mapping] = None,
+    raw: bool = False,
     inherit: bool = False,
 ) -> T:
     ...
@@ -213,11 +221,14 @@ def field_property(__field: Any) -> FieldPropertyDecorator:
     ...
 
 
-def field_property(__field=NO_FIELD, *, inherit: bool=False, **kwargs):
+def field_property(__field=NO_FIELD, *, raw: bool = False, inherit: bool=False, **kwargs):
     """With keywords argument, declare a field property; otherwise, get a property-like
-    object to set field property accessors.
+    object from a declared field_property to set its accessors.
 
     Field property declaration use the same args than dataclass field.
+    inherit=True allows to inherit of overridden field parameters (default,
+    default_factory, init, repr, hash, compare, metadata)
+    raw=True will not add default implementation for field accessors
     """
     if isinstance(__field, FieldPropertyDecorator):
         return __field
@@ -225,4 +236,4 @@ def field_property(__field=NO_FIELD, *, inherit: bool=False, **kwargs):
         raise ValueError(f"Invalid field property {__field}")
     else:
         dataclasses.field(**kwargs)  # check that parameters are valid
-        return FieldPropertyDecorator(inherit, **kwargs)
+        return FieldPropertyDecorator(raw, inherit, **kwargs)

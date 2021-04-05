@@ -1,4 +1,4 @@
-from dataclasses import FrozenInstanceError, dataclass, field
+from dataclasses import FrozenInstanceError, InitVar, dataclass, field
 from typing import Optional
 from unittest.mock import Mock
 
@@ -185,3 +185,17 @@ def test_frozen_dataclass():
         foo.bar = 1
     with raises(FrozenInstanceError):
         del foo.bar
+
+
+def test_read_only():
+    @dataclass
+    class Foo:
+        bar: int = field_property(init=False, raw=True)
+
+        @field_property(bar)
+        def get_bar(self) -> int:
+            return 0
+
+    assert Foo().bar == 0
+    with raises(AttributeError):
+        Foo().bar = 1

@@ -89,6 +89,30 @@ class Foo2(Foo):
 assert Foo2() == 1
 ```
 
+## Raw property
+
+`field_property` comes with a default implementation for its getter/setter/deleter. This can be turned off with `raw=False` parameter. Here is an example of a read_only field:
+
+```python
+from field_properties import field_property
+
+@dataclass
+class Foo:
+    bar: int = field_property(init=False, raw=True)
+
+    @field_property(bar)
+    def get_bar(self) -> int:
+        return 0
+
+assert Foo().bar == 0
+try:
+    Foo().bar = 1
+except AttributeError:
+    assert True
+else:
+    assert False
+```
+
 ## [PEP 614](https://www.python.org/dev/peps/pep-0614/)
 
 Decorator syntax `@field_property(bar).setter` is only valid in *Python 3.9*. Previous version can use the following hack:
